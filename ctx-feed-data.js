@@ -425,7 +425,7 @@ function dtInjectStyle() {
   document.head.appendChild(st);
 }
 
-// Page de base : barre ←/×, en-tête à vague, titre, zone de message
+// Page de base : barre ←/×, titre, zone de message
 class FeedDataPage extends Context {
   _frame(el, title, sub, icon) {
     fdInjectStyle();
@@ -436,7 +436,7 @@ class FeedDataPage extends Context {
     this.msg = dtEl('div', 'dt-msg');
     this.msg.setAttribute('role', 'status');
     this.body = dtEl('div', 'dt-body');
-    el.append(fdMkBar(this.bang, { back: true }), mkWaveHeader(uiSvg(icon)), t, this.body);
+    el.append(fdMkBar(this.bang, { back: true }), t, this.body);
   }
 
   say(text, kind) {

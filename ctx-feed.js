@@ -1,4 +1,4 @@
-// ctx-feed.js — contexte "Feed" (superposé, ouvert depuis Compte) :
+// ctx-feed.js — contexte "Feed" / Formulaires (superposé, ouvert depuis Réglages) :
 // résumé des données locales. Chaque tuile ouvre une page dédiée (ctx-feed-pages.js).
 
 // --- Helpers partagés par Feed et ses pages --------------------------------
@@ -33,7 +33,6 @@ function fdMkBar(bang, { back = false } = {}) {
     b.addEventListener('click', () => bang.contexts.back());
     wrap.appendChild(b);
   }
-  if (bang.lab && !back) return wrap;   // Bang Lab : la page racine est un onglet, rien à fermer
   const c = document.createElement('button');
   c.className = 'fd-bar-btn fd-close';
   c.setAttribute('aria-label', 'Fermer');
@@ -49,6 +48,7 @@ function fdInjectStyle() {
   st.id = 'fd-style';
   st.textContent = `
     .fd-bar{position:sticky;top:0;height:0;z-index:4}
+    .fd-bar + :not(.ui-head){margin-top:calc(env(safe-area-inset-top,0px) + 3.6em)}   /* page sans en-tête : place pour ← / × */
     .fd-bar .fd-bar-btn{position:absolute;top:calc(env(safe-area-inset-top,0px) + .7em);
       width:2.4em;height:2.4em;padding:0;border-radius:50%;background:var(--accent-color);
       color:#fff;display:flex;align-items:center;justify-content:center;
@@ -136,8 +136,7 @@ function fdInjectStyle() {
 class FeedContext extends Context {
   build(el) {
     fdInjectStyle();
-    el.append(fdMkBar(this.bang), mkWaveHeader(uiSvg(
-      '<path d="M5 5a14 14 0 0 1 14 14"/><path d="M5 11a8 8 0 0 1 8 8"/><circle cx="6" cy="18" r="1.2"/>')));
+    el.append(fdMkBar(this.bang, { back: true }));
     this.body = document.createElement('div');
     el.appendChild(this.body);
     this.refresh();

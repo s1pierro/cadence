@@ -50,7 +50,6 @@ class FeedPage extends Context {
     this.list = document.createElement('div');
 
     el.append(fdMkBar(this.bang, { back: true }),
-              mkWaveHeader(uiSvg(this.cfg.icon)),
               title, actions, this.slot, this.list);
     this.refresh();
   }

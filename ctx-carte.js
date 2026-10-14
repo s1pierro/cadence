@@ -443,7 +443,7 @@ class CarteContext extends Context {
     this.foot = document.createElement('div');
     this.foot.className = 'cm-foot';
     this.warnBox = this._mkTraceWarning();
-    this.panel.append(this.bar, this.sub, this.legend, this.msg, this.card, this.warnBox, this.foot);
+    this.panel.append(this.bar, this.sub, this.legend, this.msg, this.warnBox, this.card, this.foot);
 
     // Bandeau de détection du service en cours : entre la carte (et sa poignée) et le panneau
     this.detect = window.DetectBand ? new DetectBand(this) : null;
@@ -958,7 +958,7 @@ class CarteContext extends Context {
       .cm-run.yes{background:#dff3e6;color:#1c7a4d}
       .cm-run.no{background:#fbe2e0;color:#b3261e}
       .cm-acts{display:flex;gap:.6em;margin-top:.9em}
-      .cm-warn{display:flex;gap:.8em;align-items:flex-start;margin:-.6em 1em 1.2em;padding:.85em 1em;border-radius:18px;
+      .cm-warn{display:flex;gap:.8em;align-items:flex-start;margin:1em 1em 0;padding:.85em 1em;border-radius:18px;
         background:#fff4dc;color:#6b4600;box-shadow:inset 0 0 0 1px #f1d79a}
       .cm-warn[hidden]{display:none}
       .cm-warn-ico{flex:none;width:24px;height:24px;color:#b26a00;margin-top:.05em}

@@ -20,11 +20,11 @@ constructor () {
   initContexts () {
   this.appground.innerHTML = '';
   this.contexts = new ContextManager(this, this.appground);
-  // Bang Lab : trois onglets (carte, formulaires du Feed, réglages) ; les pages du Feed s'ouvrent en surcouche
+  // Bang Lab : deux onglets (carte, réglages) ; les formulaires du Feed s'ouvrent en surcouche depuis Réglages
   this.lab = true;
   this.contexts.register(new CarteContext(this, 'carte'));
-  this.contexts.register(new FeedContext(this, 'feed'));
   this.contexts.register(new ReglagesContext(this, 'reglages'));
+  this.contexts.register(new FeedContext(this, 'feed'), { overlay: true });
 registerFeedPages(this.contexts, this);
 }
 get network () { return this.store.active; }
@@ -58,6 +58,10 @@ getStopss () {
         overflow:hidden;visibility:hidden;font-weight:bold}
       .nd-item.nd-active{color:var(--accent-color)}
       .nd-item.nd-active .nd-label{color:var(--accent-color);font-weight:bold}
+      .nd-clock{flex:1.4;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+        padding:.6em 1.2em .2em;color:var(--accent-color);user-select:none}
+      .nd-time{font-size:1.9em;font-weight:bold;line-height:1;font-variant-numeric:tabular-nums}
+      .nd-date{font-size:.85em;margin-top:.25em;color:var(--inactive-color)}
     `;
             document.head.appendChild(st);
         }
@@ -75,14 +79,6 @@ getStopss () {
             on: svg(`<path d="M6 4h6a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h3" stroke-width="2.6"/>
         <path d="M17.5 22s-4-3.2-4-6.2a4 4 0 0 1 8 0c0 3-4 6.2-4 6.2z" fill="currentColor"/>
         <circle cx="17.5" cy="15.8" r="1.4" fill="${cut}" stroke="none"/>`)
-        }, {
-            id: 'feed',
-            label: 'Formulaires',
-            off: svg(`<rect x="4" y="5" width="16" height="16" rx="4"/>
-        <path d="M8 3v4M16 3v4M8 12h8M8 16h5"/>`),
-            on: svg(`<rect x="4" y="5" width="16" height="16" rx="4" fill="currentColor"/>
-        <path d="M8 3v4M16 3v4"/>
-        <path d="M8 12h8M8 16h5" stroke="${cut}"/>`)
         }, {
             id: 'reglages',
             label: 'Réglages',
@@ -111,9 +107,34 @@ getStopss () {
                 def: it
             };
         });
+        this.buildClock(nav);
         // Onglet initial : dernier utilisé, sinon "achat"
         const saved = this.loadFromLocal('nav-active');
         this.selectNav(this.navItems[saved] ? saved : 'carte');
+    }
+    // Heure actuelle, à droite de la barre de navigation ; mise à jour au changement de minute
+    buildClock(nav) {
+        const box = document.createElement('div');
+        box.className = 'nd-clock';
+        box.setAttribute('role', 'timer');
+        const time = document.createElement('span');
+        time.className = 'nd-time';
+        const date = document.createElement('span');
+        date.className = 'nd-date';
+        box.append(time, date);
+        nav.appendChild(box);
+        const fmtTime = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const fmtDate = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+        const tick = () => {
+            const now = new Date();
+            time.textContent = fmtTime.format(now);
+            date.textContent = fmtDate.format(now);
+            clearTimeout(this._clockT);
+            this._clockT = setTimeout(tick, 60000 - now.getSeconds() * 1000 - now.getMilliseconds() + 50);
+        };
+        tick();
+        // Retour au premier plan : les minuteries ont pu être suspendues
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
     }
     selectNav(id) {
         if (!this.navItems[id]) return;

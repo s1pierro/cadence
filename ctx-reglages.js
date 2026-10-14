@@ -5,7 +5,7 @@ class ReglagesContext extends Context {
     this._injectStyle();
     this.list = document.createElement('div');
     this.list.className = 'rg-list';
-    el.append(mkWaveHeader(uiSvg('<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>'), true), this.list);
+    el.append(this.list);
     this.refresh();
     if (window.PWA) PWA.on(() => this.refresh());
     if (window.GeoPerm) { GeoPerm.on(() => this.refresh()); GeoPerm.state(); }
@@ -54,8 +54,12 @@ class ReglagesContext extends Context {
       r.querySelector('.rg-chev').remove();
       return r;
     });
-    if (!netRows.length) netRows.push(this._row('<circle cx="12" cy="12" r="7"/>', 'Aucun réseau', 'Importe un jeu de données dans Formulaires › Importer', () => bang.selectNav('feed')));
+    if (!netRows.length) netRows.push(this._row('<circle cx="12" cy="12" r="7"/>', 'Aucun réseau', 'Importe un jeu de données dans Formulaires › Importer', () => bang.contexts.open('feed')));
     groups.push(this._group('Réseau actif', netRows));
+
+    // Formulaires : saisie, import et export des données du réseau
+    const dataRows = [this._row('<rect x="4" y="5" width="16" height="16" rx="4"/><path d="M8 3v4M16 3v4M8 12h8M8 16h5"/>',
+      'Formulaires', 'Réseaux, lignes, arrêts, services · importer, exporter', () => bang.contexts.open('feed'))];
 
     // Données du serveur : état de la dernière synchronisation ; toucher recharge le fichier (remplace les données locales)
     if (window.ServerData) {
@@ -69,8 +73,9 @@ class ReglagesContext extends Context {
             : s === 'offline' ? 'Hors ligne : données locales conservées.'
             : 'Échec : ' + sd.detail, s === 'synced' ? '' : 'err');
         }, warn ? 'rg-warn' : '');
-      groups.push(this._group('Données', [row]));
+      dataRows.push(row);
     }
+    groups.push(this._group('Données', dataRows));
 
     // Autorisation de position : état, demande, aide pour réactiver
     let geo = null;
@@ -115,7 +120,7 @@ class ReglagesContext extends Context {
     const st = document.createElement('style');
     st.id = 'rg-style';
     st.textContent = `
-      .rg-list{padding:.2em 0 1.5em}
+      .rg-list{padding:env(safe-area-inset-top,0px) 0 1.5em}
       .rg-h{margin:1.2em 1.4em .4em;font-size:.8em;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--inactive-color)}
       .rg-box{margin:0 1em;background:#fff;border-radius:14px;overflow:hidden}
       .rg-row{display:flex;align-items:center;gap:1em;padding:.95em 1em;cursor:pointer;color:var(--text-color);border-top:1px solid #eee;
