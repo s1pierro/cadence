@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Cadence – Assistant de conduite",
+  "short_name": "Cadence",
+  "description": "Tenez l’heure, arrêt après arrêt : détection du service en cours, avance et retard, carte du réseau.",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#115e88",
+  "theme_color": "#115e88",
+  "icons": [
+    { "src": "icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-1024x1024.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" }
+  ]
+}
