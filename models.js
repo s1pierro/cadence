@@ -568,29 +568,50 @@ class Service {
   }
 
   /** Points [lat, lon] du tronçon entre les arrêts d'indices i et j (inclus) : tracé routier s'il est à jour
-   *  (on repère le sommet du tracé le plus proche de chaque arrêt, en avançant le long du tracé), sinon lignes droites. */
+   *  (chaque arrêt est projeté sur le tracé, en avançant le long de celui-ci, et le tracé est coupé au point projeté),
+   *  sinon lignes droites. */
   sectionPath(i, j) {
     const sts = this.stopTimes;
     const straight = () => sts.slice(i, j + 1).map(t => t.stop).filter(s => s.lat !== null && s.lon !== null).map(s => [s.lat, s.lon]);
     if (!this.shapeValid) return straight();
-    const pts = this.shape.pts;
-    const idx = [];
-    let from = 0;
+    const pts = this.shape.pts, cuts = this._shapeCuts();
+    const a = cuts[i], b = cuts[j];
+    if (!a || !b || b.k + b.f <= a.k + a.f) return straight();
+    // point projeté de l'arrêt i, sommets intermédiaires, point projeté de l'arrêt j
+    return [a.p, ...pts.slice(a.k + 1, b.k + 1), b.p];
+  }
+
+  /** Projection de chaque arrêt sur le tracé : {k (arête pts[k]→pts[k+1]), f (0..1), p [lat, lon]} ou null.
+   *  Couper sur un sommet du tracé ne suffit pas : sur une route droite, les sommets peuvent être espacés de
+   *  plusieurs centaines de mètres, et le tronçon d'un arrêt finirait bien avant (ou après) l'arrêt. */
+  _shapeCuts() {
+    const pts = this.shape.pts, sts = this.stopTimes;
+    const sig = pts.length + '|' + sts.map(t => t.stop.id + '@' + t.stop.lat + ',' + t.stop.lon).join(';');
+    if (this._cuts && this._cuts.pts === pts && this._cuts.sig === sig) return this._cuts.list;
+    const list = [];
+    let k0 = 0, f0 = 0;
     for (const t of sts) {
       const s = t.stop;
-      if (s.lat === null || s.lon === null) { idx.push(null); continue; }
-      const cos = Math.cos(s.lat * Math.PI / 180);
-      let best = from, bd = Infinity;
-      for (let k = from; k < pts.length; k++) {
-        const d = (pts[k][0] - s.lat) ** 2 + ((pts[k][1] - s.lon) * cos) ** 2;
-        if (d < bd) { bd = d; best = k; }
+      if (s.lat === null || s.lon === null || pts.length < 2) { list.push(null); continue; }
+      const kx = Math.cos(s.lat * Math.PI / 180);
+      let best = null, bd = Infinity;
+      for (let k = k0; k + 1 < pts.length; k++) {
+        const ax = (pts[k][1] - s.lon) * kx, ay = pts[k][0] - s.lat;
+        const dx = (pts[k + 1][1] - pts[k][1]) * kx, dy = pts[k + 1][0] - pts[k][0], L2 = dx * dx + dy * dy;
+        let f = L2 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L2)) : 0;
+        if (k === k0 && f < f0) f = f0;                    // jamais en arrière de l'arrêt précédent
+        const d = (ax + f * dx) ** 2 + (ay + f * dy) ** 2;
+        if (d < bd) { bd = d; best = { k, f }; }
       }
-      idx.push(best);
-      from = best;
+      if (!best) { list.push(null); continue; }
+      const p = pts[best.k], q = pts[best.k + 1];
+      best.p = [p[0] + (q[0] - p[0]) * best.f, p[1] + (q[1] - p[1]) * best.f];
+      list.push(best);
+      k0 = best.k; f0 = best.f;
     }
-    const a = idx[i], b = idx[j];
-    if (a === null || b === null || b <= a) return straight();
-    return pts.slice(a, b + 1);
+    // cache non énuméré : n'apparaît pas dans toJSON / les copies
+    Object.defineProperty(this, '_cuts', { value: { pts, sig, list }, writable: true, configurable: true, enumerable: false });
+    return list;
   }
 
   /** Points [lat, lon] à dessiner : tracé routier s'il est à jour, sinon arrêts reliés en ligne droite */
