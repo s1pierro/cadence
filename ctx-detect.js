@@ -42,7 +42,7 @@ class DetectContext extends Context {
       this.body.replaceChildren(this._e('div', 'dt-note', net ? 'Ce réseau n’a pas encore de service.' : 'Aucun réseau actif : active un réseau dans Feed › Réseaux.'));
       return;
     }
-    this.det = new Detector(net);
+    this.det = new Detector(net, { include: window.DetectScope ? DetectScope.filter(net) : null });
     this.out = this._e('div', 'dt-out');
     this.body.replaceChildren(this.out, this._mkLive(), this._mkSim(), this._mkInfo());
     this._render(this.det.state, null);

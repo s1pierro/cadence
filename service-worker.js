@@ -1,13 +1,13 @@
 // service-worker.js — cache hors ligne de l'application.
 // Pour publier une nouvelle version : changer VERSION (le cache précédent est supprimé à l'activation).
-const VERSION = 'lab-v8';
+const VERSION = 'lab-v9';
 const LIBS = 'lab-libs';   // bibliothèques CDN (MapLibre) : conservées entre les versions
 const SHELL = [
   './', './index.html', './manifest.json',
   './css/ic.css', './css/style.css', './css/pwa.css',
   './storage-ns.js', './pwa.js', './geo-perm.js', './models.js', './routing.js', './icon-util.js', './qr-util.js', './contexts.js',
   './network-store.js', './demo-network.js', './ui-form.js', './ticket-search.js',
-  './ctx-feed.js', './ctx-calendar.js', './detect.js', './ctx-detect.js', './ctx-feed-pages.js', './ctx-feed-data.js', './server-data.js',
+  './ctx-feed.js', './ctx-calendar.js', './detect.js', './detect-scope.js', './ctx-detect.js', './ctx-feed-pages.js', './ctx-feed-data.js', './server-data.js',
   './smap.js', './gl-map.js', './carte-detect.js', './ctx-carte.js', './ctx-reglages.js', './bang.js',
   './pictos/mainpicto.svg', './pictos/bus.svg', './pictos/car.svg', './pictos/metro.svg',
   './pictos/train.svg', './pictos/tramway.svg', './pictos/velo-libre-service.svg',

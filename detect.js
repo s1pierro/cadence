@@ -1,11 +1,12 @@
 // detect.js — détection du service en cours à partir de positions GNSS.
 //   Segments.derive(réseau)      -> index des segments (paire d'arrêts ordonnée : A>B), dérivé des services
-//   new Detector(réseau)         -> .feed({t, lat, lon, acc, speed, heading}) renvoie l'état de la détection
+//   new Detector(réseau, {include}) -> .feed({t, lat, lon, acc, speed, heading}) renvoie l'état de la détection
+//                                     (include(service) : faux pour écarter un service de la détection)
 //   Detector.simulate(service,…) -> trace GNSS synthétique (tests et démonstration)
 // Principe : chaque position vote pour les segments proches (grille ~200 m, cap, précision) ; chaque service qui
 // emprunte un de ces segments reçoit une vraisemblance (écart au tracé, cap, horaire théorique à cet endroit).
-// Seuls les services qui circulent ce jour-là (jours et périodes de fonctionnement, calendrier du réseau) sont
-// candidats. Les scores s'accumulent avec oubli progressif (demi-vie ~45 s).
+// Seuls les services retenus (option include) qui circulent ce jour-là (jours et périodes de fonctionnement,
+// calendrier du réseau) sont candidats. Les scores s'accumulent avec oubli progressif (demi-vie ~45 s).
 // Aucune dépendance au DOM : le module se teste hors navigateur.
 
 const Segments = {
@@ -137,7 +138,8 @@ class Detector {
       outLL: -5,          // vraisemblance d'une position sans segment du service à proximité
       maxAcc: 150,        // m : positions plus imprécises ignorées
       lockP: 0.8, probP: 0.45,
-      sigmaEarly: 4, sigmaLate: 12    // min : tolérance sur l'écart à l'horaire (en avance / en retard)
+      sigmaEarly: 4, sigmaLate: 12,   // min : tolérance sur l'écart à l'horaire (en avance / en retard)
+      include: null       // service -> booléen : services soumis à la détection (null : tous)
     }, opts);
     this.ix = Segments.derive(net);
     this.reset();
@@ -157,14 +159,19 @@ class Detector {
     this.eligible = new Map();  // id service -> décalage horaire (0 : circule ce jour ; 1440 : service de la veille après minuit)
   }
 
-  // Services candidats à l'instant `date` : ceux qui circulent ce jour-là d'après leurs jours et périodes de
+  // Change les services soumis à la détection ; les services écartés perdent leur score dès la position suivante
+  setInclude(fn) { this.opt.include = fn; this._day = null; }
+
+  // Services candidats à l'instant `date` : ceux retenus (option include) qui circulent ce jour-là d'après leurs jours et périodes de
   // fonctionnement ; plus ceux de la veille dont l'horaire déborde après minuit (heures ≥ 24:00).
   _eligibleOn(date) {
     const iso = Network.iso(date);
     if (iso === this._day) return this.eligible;
     const eve = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
     const el = new Map();
+    const inc = this.opt.include;
     for (const sv of this.net.services) {
+      if (inc && !inc(sv)) continue;
       if (sv.runsOn(date, this.net)) { el.set(sv.id, 0); continue; }
       const sts = sv.stopTimes, last = sts[sts.length - 1];
       const end = last ? Segments.minutes(last.arrival != null ? last.arrival : last.departure) : null;

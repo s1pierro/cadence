@@ -41,6 +41,15 @@ class DetectBand {
     this.card.className = 'cd-card';
     this.el.appendChild(this.card);
     this.trace = this._loadTrace();
+    // Réglages › Lignes à détecter : appliqué tout de suite, y compris pendant une détection
+    if (window.DetectScope) DetectScope.on(() => {
+      if (!this.det || !this.net) return;
+      const inc = DetectScope.filter(this.net);
+      this.det.setInclude(inc);
+      const sv = this.lock && this.net.services.find(x => x.id === this.lock.id);
+      if (sv && !inc(sv)) this._unlock('écarté', this._now());     // le service suivi vient d'être décoché
+      this.render();
+    });
     if (window.GeoPerm) { GeoPerm.on(() => this.render()); GeoPerm.state(); }
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && this.src) this._wakeLock();
@@ -57,7 +66,7 @@ class DetectBand {
     this._sig = sig;
     this.stop();
     this.net = ok ? net : null;
-    this.det = ok ? new Detector(net) : null;
+    this.det = ok ? new Detector(net, { include: window.DetectScope ? DetectScope.filter(net) : null }) : null;
     this.s = null;
     this.fix = null;
     this.msg = null;

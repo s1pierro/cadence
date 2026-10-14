@@ -25,6 +25,7 @@ constructor () {
   this.contexts.register(new CarteContext(this, 'carte'));
   this.contexts.register(new ReglagesContext(this, 'reglages'));
   this.contexts.register(new FeedContext(this, 'feed'), { overlay: true });
+  this.contexts.register(new DetectScopeContext(this, 'detect-scope'), { overlay: true });
 registerFeedPages(this.contexts, this);
 }
 get network () { return this.store.active; }
