@@ -3,8 +3,9 @@
 //   new Detector(réseau)         -> .feed({t, lat, lon, acc, speed, heading}) renvoie l'état de la détection
 //   Detector.simulate(service,…) -> trace GNSS synthétique (tests et démonstration)
 // Principe : chaque position vote pour les segments proches (grille ~200 m, cap, précision) ; chaque service qui
-// emprunte un de ces segments reçoit une vraisemblance (écart au tracé, cap, horaire théorique à cet endroit,
-// circulation ce jour-là d'après le calendrier). Les scores s'accumulent avec oubli progressif (demi-vie ~45 s).
+// emprunte un de ces segments reçoit une vraisemblance (écart au tracé, cap, horaire théorique à cet endroit).
+// Seuls les services qui circulent ce jour-là (jours et périodes de fonctionnement, calendrier du réseau) sont
+// candidats. Les scores s'accumulent avec oubli progressif (demi-vie ~45 s).
 // Aucune dépendance au DOM : le module se teste hors navigateur.
 
 const Segments = {
@@ -152,6 +153,28 @@ class Detector {
     this.state = { status: 'none', candidates: [], n: 0 };
     this.probs = null;
     this.lastT = null;
+    this._day = null;           // jour (ISO) pour lequel `eligible` a été calculé
+    this.eligible = new Map();  // id service -> décalage horaire (0 : circule ce jour ; 1440 : service de la veille après minuit)
+  }
+
+  // Services candidats à l'instant `date` : ceux qui circulent ce jour-là d'après leurs jours et périodes de
+  // fonctionnement ; plus ceux de la veille dont l'horaire déborde après minuit (heures ≥ 24:00).
+  _eligibleOn(date) {
+    const iso = Network.iso(date);
+    if (iso === this._day) return this.eligible;
+    const eve = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
+    const el = new Map();
+    for (const sv of this.net.services) {
+      if (sv.runsOn(date, this.net)) { el.set(sv.id, 0); continue; }
+      const sts = sv.stopTimes, last = sts[sts.length - 1];
+      const end = last ? Segments.minutes(last.arrival != null ? last.arrival : last.departure) : null;
+      if (end !== null && end >= 1440 && sv.runsOn(eve, this.net)) el.set(sv.id, 1440);
+    }
+    // les services qui ne circulent plus sortent des scores
+    for (const id of [...this.score.keys()]) if (!el.has(id)) { this.score.delete(id); this.pos.delete(id); }
+    this._day = iso;
+    this.eligible = el;
+    return el;
   }
 
   get segmentCount() { return this.ix.segs.size; }
@@ -189,23 +212,22 @@ class Detector {
 
     const date = new Date(t);
     const nowMin = date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60;
-    const runs = new Map();
-    const runsToday = sv => { if (!runs.has(sv.id)) runs.set(sv.id, sv.runsOn(date, this.net)); return runs.get(sv.id); };
+    const eligible = this._eligibleOn(date);
 
     // meilleure vraisemblance par service
     const ll = new Map(), hit = new Map();
     for (const m of near.values()) {
       for (const inst of m.seg.services) {
         const sv = inst.service;
+        if (!eligible.has(sv.id)) continue;        // ne circule pas ce jour-là : jamais candidat
         let v = -Math.min(0.5 * (m.d / sigma) ** 2, 5);
         if (moving) v -= Math.min((Detector.angle(heading, m.brg) / 50) ** 2, 4);
         let sched = null, delay = null;
         if (inst.t0 !== null && inst.t1 !== null && m.seg.len > 0) {
           sched = inst.t0 + (inst.t1 - inst.t0) * Math.min(1, m.s / m.seg.len);
-          delay = nowMin - sched;
+          delay = nowMin + eligible.get(sv.id) - sched;
           v -= Math.min((delay / (delay < 0 ? o.sigmaEarly : o.sigmaLate)) ** 2, 6);
         }
-        if (!runsToday(sv)) v -= 3;
         // continuité : ne pas revenir en arrière sur le service
         const prev = this.pos.get(sv.id);
         if (prev && inst.index < prev.index) v -= 2;
@@ -216,6 +238,7 @@ class Detector {
       }
     }
     for (const sv of this.net.services) {
+      if (!eligible.has(sv.id)) continue;
       const v = ll.has(sv.id) ? ll.get(sv.id) : o.outLL;
       this.score.set(sv.id, lambda * (this.score.get(sv.id) || 0) + v);
       if (hit.has(sv.id)) this.pos.set(sv.id, { ...hit.get(sv.id), t });
@@ -226,7 +249,7 @@ class Detector {
 
   _summarize(inNetwork, t) {
     const o = this.opt;
-    const svs = this.net.services;
+    const svs = this.net.services.filter(sv => this.eligible.has(sv.id));
     const rows = svs.map(sv => ({ sv, s: this.score.get(sv.id) || 0 }));
     // poids total de la fenêtre d'oubli (somme des λ^j) : ramène le score cumulé à une moyenne, puis × K
     const norm = o.K / (this._weight || 1);
