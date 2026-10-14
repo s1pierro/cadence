@@ -59,8 +59,11 @@ getStopss () {
         overflow:hidden;visibility:hidden;font-weight:bold}
       .nd-item.nd-active{color:var(--accent-color)}
       .nd-item.nd-active .nd-label{color:var(--accent-color);font-weight:bold}
-      .nd-clock{flex:1.4;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;
+      .nd-clock{flex:1.4;display:flex;align-items:center;justify-content:flex-end;gap:.9em;
         padding:.6em 1.2em .2em;color:var(--accent-color);user-select:none}
+      .nd-now{display:flex;flex-direction:column;align-items:flex-end}
+      .nd-speed{display:flex;flex-direction:column;align-items:center;padding-right:.9em;border-right:1px solid var(--border-color)}
+      .nd-kmh{font-size:.75em;margin-top:.3em;color:var(--inactive-color)}
       .nd-time{font-size:1.9em;font-weight:bold;line-height:1;font-variant-numeric:tabular-nums}
       .nd-date{font-size:.85em;margin-top:.25em;color:var(--inactive-color)}
     `;
@@ -113,16 +116,31 @@ getStopss () {
         const saved = this.loadFromLocal('nav-active');
         this.selectNav(this.navItems[saved] ? saved : 'carte');
     }
-    // Heure actuelle, à droite de la barre de navigation ; mise à jour au changement de minute
+    // Heure actuelle, à droite de la barre de navigation ; mise à jour au changement de minute.
+    // Pendant un relevé (détection), la vitesse s'affiche à sa gauche (voir setSpeed).
     buildClock(nav) {
         const box = document.createElement('div');
         box.className = 'nd-clock';
-        box.setAttribute('role', 'timer');
+        const speed = document.createElement('div');
+        speed.className = 'nd-speed';
+        speed.hidden = true;
+        speed.setAttribute('aria-live', 'off');
+        this._speedVal = document.createElement('span');
+        this._speedVal.className = 'nd-time';
+        const unit = document.createElement('span');
+        unit.className = 'nd-kmh';
+        unit.textContent = 'km/h';
+        speed.append(this._speedVal, unit);
+        this._speedBox = speed;
+        const now = document.createElement('div');
+        now.className = 'nd-now';
+        now.setAttribute('role', 'timer');
         const time = document.createElement('span');
         time.className = 'nd-time';
         const date = document.createElement('span');
         date.className = 'nd-date';
-        box.append(time, date);
+        now.append(time, date);
+        box.append(speed, now);
         nav.appendChild(box);
         const fmtTime = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
         const fmtDate = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -136,6 +154,18 @@ getStopss () {
         tick();
         // Retour au premier plan : les minuteries ont pu être suspendues
         document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+    }
+    // Vitesse (m/s) à côté de l'heure ; null la masque. Sans nouvelle valeur pendant 15 s, elle disparaît aussi.
+    setSpeed(ms) {
+        if (!this._speedBox) return;
+        clearTimeout(this._speedT);
+        const ok = Number.isFinite(ms) && ms >= 0;
+        if (ok) {
+            const kmh = ms * 3.6;
+            this._speedVal.textContent = kmh < 1 ? '0' : String(Math.round(kmh));
+            this._speedT = setTimeout(() => this.setSpeed(null), 15000);
+        }
+        this._speedBox.hidden = !ok;
     }
     selectNav(id) {
         if (!this.navItems[id]) return;

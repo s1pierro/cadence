@@ -189,6 +189,7 @@ class DetectBand {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     const was = this.src;
     this.src = null;
+    if (this.bang.setSpeed) this.bang.setSpeed(null);
     this.lock = null;
     this.lockCand = null;
     this._release();
@@ -202,7 +203,21 @@ class DetectBand {
   }
 
   // ----- Positions --------------------------------------------------------------------------------
+  // Vitesse dans la barre de navigation : celle du GNSS, sinon déduite des deux dernières positions (≤ 15 s d'écart)
+  _showSpeed(f, prev) {
+    if (!this.bang.setSpeed) return;
+    let v = Number.isFinite(f.speed) ? f.speed : null;
+    if (v === null && prev && f.t > prev.t && f.t - prev.t <= 15000) {
+      const kx = Math.cos(f.lat * Math.PI / 180) * 111320, ky = 110540;
+      const d = Math.hypot((f.lon - prev.lon) * kx, (f.lat - prev.lat) * ky);
+      if (d > Math.max(10, Number.isFinite(f.acc) ? f.acc : 20)) v = d / ((f.t - prev.t) / 1000);   // sinon : bruit de position
+      else v = 0;
+    }
+    this.bang.setSpeed(v);
+  }
+
   _feed(f, batch) {
+    this._showSpeed(f, this.fix);
     const s = this.det.feed(f);
     this.s = s;
     this.fix = f;

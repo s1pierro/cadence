@@ -132,6 +132,7 @@ class DetectContext extends Context {
       for (let k = 0; k < perStep && this.sim.i < fixes.length; k++) this.det.feed(fixes[this.sim.i++]);
       const done = this.sim.i >= fixes.length;
       const f = fixes[Math.min(this.sim.i, fixes.length) - 1];
+      if (f && this.bang.setSpeed) this.bang.setSpeed(f.speed);
       this._render(this.det.state, null, { sim: sv, f, progress: this.sim.i / fixes.length });
       if (done) this._stop(true);
     }, stepMs);
@@ -145,6 +146,7 @@ class DetectContext extends Context {
     this.watching = navigator.geolocation.watchPosition(p => {
       const c = p.coords;
       this.det.feed({ t: p.timestamp, lat: c.latitude, lon: c.longitude, acc: c.accuracy, speed: c.speed, heading: c.heading });
+      if (this.bang.setSpeed) this.bang.setSpeed(c.speed);      // vitesse du GNSS, masquée si l'appareil ne la donne pas
       this._render(this.det.state, null, { f: { acc: c.accuracy }, live: true });
     }, err => {
       this._stop(true);
@@ -154,9 +156,11 @@ class DetectContext extends Context {
   }
 
   _stop(keepResult) {
+    const was = this.watching != null || !!this.simTimer;
     if (this.simTimer) { clearInterval(this.simTimer); this.simTimer = null; }
     if (this.watching != null && navigator.geolocation) { navigator.geolocation.clearWatch(this.watching); }
     this.watching = null;
+    if (was && this.bang.setSpeed) this.bang.setSpeed(null);
     if (this.liveBtn) this.liveBtn.textContent = 'Démarrer le GNSS';
     if (this.simBtn) this.simBtn.textContent = 'Lancer la simulation';
   }
